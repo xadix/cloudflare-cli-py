@@ -10,16 +10,16 @@ import versioneer
 # https://setuptools.readthedocs.io/en/latest/setuptools.html#metadata
 
 setuptools.setup(
-    name="xadix-dnspod",
-    description="Bindings and CLI for dnspod international api (dnspod.com)",
-    url="https://github.com/xadix/dnspod-py",
+    name="xadix-cloudflare",
+    description="CLI for cloudflare api",
+    url="https://github.com/xadix/cloudflare-api-py",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     packages=setuptools.find_packages(),
     py_modules=[],
     entry_points={
         "console_scripts": [
-            "xdx-dnspod=xadix.dnspod.cli:main",
+            "xdx-cloudflare=xadix.cloudflare.cli:main",
         ]
     },
     install_requires=[
@@ -33,6 +33,6 @@ setuptools.setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
     ],
-    keywords='dnspod',
+    keywords='cloudflare',
     python_requires='>=2.7, <3',
 )

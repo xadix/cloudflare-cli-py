@@ -1,2 +1,2 @@
 include versioneer.py
-include xadix/dnspod/_version.py
+include xadix/cloudflare/_version.py

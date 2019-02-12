@@ -106,10 +106,10 @@ def do_auth(base, arguments):
 def main():
     logging.basicConfig(level=logging.INFO, datefmt='%Y-%m-%dT%H:%M:%S', stream=sys.stderr, format="%(asctime)s %(process)d %(thread)d %(levelno)03d:%(levelname)-8s %(name)-12s %(module)s:%(lineno)s:%(funcName)s %(message)s")
 
-    config_dir = os.path.join(os.path.expanduser("~"),".config","xadix-dnspod")
+    config_dir = os.path.join(os.path.expanduser("~"),".config","xadix-cloudflare")
 
-    root_parser = argparse.ArgumentParser(add_help = False, prog="xadix-dnspod")
-    root_parser.add_argument("--version", action="version", version="xadix-dnspod {:s}".format(__version__))
+    root_parser = argparse.ArgumentParser(add_help = False, prog="xadix-cloudflare")
+    root_parser.add_argument("--version", action="version", version="xadix-cloudflare {:s}".format(__version__))
     root_parser.add_argument("-v", "--verbose", action="count", dest="verbosity", help="increase verbosity level")
     root_parser.add_argument("-h", "--help", action="help", help="shows this help message and exit")
 
