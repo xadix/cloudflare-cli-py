@@ -13,6 +13,7 @@ import tabulate
 import json
 import os.path
 import dns.resolver
+import CloudFlare
 #import . as dnspod
 from . import *
 from . import __version__
@@ -54,57 +55,8 @@ except ImportError:
     # Python 2
     import httplib as http_client
 
-def do_auth(base, arguments):
-    cache_data = {}   
-    if os.path.exists(arguments.cache):
-        with open(arguments.cache) as cache_file:
-            cache_data = json.load(cache_file)
-            use_token = cache_data["token"]
-
-    logging.debug("cache_data = %s", cache_data)
-
-    use_token = None
-    if False: None
-    elif arguments.token is not None:
-        use_token = arguments.token
-    elif "XADIX_CLOUDFLARE_TOKEN" in os.environ:
-        use_token = os.environ["XADIX_CLOUDFLARE_TOKEN"]
-    elif "token" in cache_data:
-        use_token = cache_data["token"]
-
-    logging.debug("use_token=%s", use_token)
-    token_ok = False
-    if use_token is not None:
-        token_ok = base.check_token(use_token)
-    logging.debug("token_ok=%s", token_ok)
-
-    if token_ok:
-        base.user_token = use_token
-    else:
-        config_data = {}
-        if os.path.exists(arguments.config):
-            with open(arguments.config) as config_file:
-                config_data = json.load(config_file)
-
-        if False: None
-        elif arguments.email is not None:
-            use_email = arguments.email
-        elif "XADIX_CLOUDFLARE_EMAIL" in os.environ:
-            use_email = os.environ["XADIX_CLOUDFLARE_EMAIL"]
-        elif "email" in config_data:
-            use_email = config_data["email"]
-
-        logging.debug("use_email=%s", use_email)
-
-        #token = base.auth( email = arguments.email, password = arguments.password )
-        cache_data["token"] = token
-        if not os.path.exists(os.path.dirname(arguments.cache)):
-            os.makedirs(os.path.dirname(arguments.cache), 0700)
-        with open(arguments.cache, "w") as cache_file:
-            json.dump(cache_data, cache_file)
-
 def main():
-    logging.basicConfig(level=logging.INFO, datefmt='%Y-%m-%dT%H:%M:%S', stream=sys.stderr, format="%(asctime)s %(process)d %(thread)d %(levelno)03d:%(levelname)-8s %(name)-12s %(module)s:%(lineno)s:%(funcName)s %(message)s")
+    logging.basicConfig(level=logging.INFO, datefmt="%Y-%m-%dT%H:%M:%S", stream=sys.stderr, format="%(asctime)s %(process)d %(thread)d %(levelno)03d:%(levelname)-8s %(name)-12s %(module)s:%(lineno)s:%(funcName)s %(message)s")
 
     config_dir = os.path.join(os.path.expanduser("~"),".config","xadix-cloudflare")
 
@@ -132,11 +84,9 @@ def main():
 
     domain_record_upsert_subparser = domain_record_subparsers.add_parser("upsert")
     domain_record_upsert_subparser.add_argument("-n", "--name", action="store", dest="record_name", type=str, required=True, help="...")
-    domain_record_upsert_subparser.add_argument("-l", "--line", action="store", dest="record_line", type=str, required=False, default="default", help="...")
     domain_record_upsert_subparser.add_argument("-t", "--type", action="store", dest="record_type", type=str, required=True, help="...")
     #domain_record_upsert_subparser.add_argument("-v", "--value", action="store", dest="record_value", type=str, required=True, help="...")
-    domain_record_upsert_subparser.add_argument("-m", "--mx-priority", action="store", dest="record_mx_priority", type=str, required=False, help="...")
-    domain_record_upsert_subparser.add_argument("-x", "--ttl", action="store", dest="record_ttl", type=str, required=False, help="...")
+    domain_record_upsert_subparser.add_argument("-x", "--ttl", action="store", dest="record_ttl", type=int, required=False, help="...")
     domain_record_upsert_subparser_value_group = domain_record_upsert_subparser.add_mutually_exclusive_group(required=True)
     domain_record_upsert_subparser_value_group.add_argument("-v", "--value", action="store", dest="record_value", type=str, default=None, help="...")
     domain_record_upsert_subparser_value_group.add_argument("--value-public", action="store_true", dest="record_value_public", default=False, help="...")
@@ -155,16 +105,31 @@ def main():
 
     logging.debug("sys.argv = %s, arguments = %s, logging.level = %s", sys.argv, arguments, logging.getLogger("").getEffectiveLevel())
 
-    public_ip = get_public_ip()
-    logging.debug("public_ip = %s", public_ip)
+    use_email = None
+    if False: None
+    elif arguments.email is not None:
+        use_email = arguments.email
+    elif "XADIX_CLOUDFLARE_EMAIL" in os.environ:
+        use_email = os.environ["XADIX_CLOUDFLARE_EMAIL"]
 
-    base = Base()
+    use_token = None
+    if False: None
+    elif arguments.token is not None:
+        use_token = arguments.token
+    elif "XADIX_CLOUDFLARE_TOKEN" in os.environ:
+        use_token = os.environ["XADIX_CLOUDFLARE_TOKEN"]
 
+    logging.debug("use_token=%s", use_token)
+    logging.debug("use_email=%s", use_email)
+
+    cf = CloudFlare.CloudFlare(email=use_email, token=use_token)
+    record_types = ["A", "AAAA", "CNAME", "TXT", "SRV", "LOC", "MX", "NS", "SPF", "CERT", "DNSKEY", "DS", "NAPTR", "SMIMEA", "SSHFP", "TLSA", "URI"]
     if False: None
     elif arguments.subparser0 == "domain":
         if False: None
         elif arguments.subparser1 == "record":
-            records = base.domains.records(domain_name = arguments.domain_name)
+            zones = cf.zones.get(params = {"name": arguments.domain_name})
+            zone = zones[0]
             if "record_value" in arguments:
                 use_record_value = arguments.record_value
                 logging.debug("use_record_value = %s", use_record_value)
@@ -173,13 +138,20 @@ def main():
                 logging.debug("use_record_value = %s", use_record_value)
             if False: None
             elif arguments.subparser2 == "list":
-                result = records.list()
-                sys.stdout.write(format_dlist(result["records"], arguments.format))
-                sys.stdout.write("\n")
+                for record_type in record_types:
+                    records = cf.zones.dns_records.get(zone["id"], params={"type": record_type})
+                    sys.stdout.write(format_dlist(records, arguments.format))
+                    sys.stdout.write("\n")
             elif arguments.subparser2 == "upsert":
-                result = records.upsert( name = arguments.record_name, type = arguments.record_type, line = arguments.record_line,
-                    value = use_record_value, mx_priority = arguments.record_mx_priority, ttl = arguments.record_ttl )
-            
+                records = cf.zones.dns_records.get(zone["id"], params={"type": arguments.record_type, "match": "all", "name": arguments.record_name, "per_page": 100})
+                if records and len(records) > 0:
+                    for record in records:
+                        logging.info("updating record=%s", record)
+                        result = cf.zones.dns_records.put(zone["id"], record["id"], data={"name": arguments.record_name, "type": arguments.record_type, "content": use_record_value, "ttl": arguments.record_ttl})
+                        logging.info("result=%s", result)
+                else:
+                    result = cf.zones.dns_records.post(zone["id"], data={"name": arguments.record_name, "type": arguments.record_type, "content": use_record_value, "ttl": arguments.record_ttl})
+                    logging.info("result=%s", result)
 
 if __name__ == "__main__":
     main()
